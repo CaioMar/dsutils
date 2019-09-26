@@ -64,20 +64,34 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-class Table(metaclass=Singleton):
+class Table:
+    created_objects = []
+
     def __init__(self, database, table_name, table_alias, table_safra, table_key='nr_cpf_cnpj'):
-        self.database = database
-        self.table_name = table_name
-        self.table_alias = table_alias
-        self.table_safra = table_safra
-        self.table_key = table_key
+        if self.unique(table_alias, table_name+table_safra):
+            self.database = database
+            self.table_name = table_name
+            self.table_alias = table_alias
+            self.table_safra = table_safra
+            self.table_key = table_key
+            self.created_objects.append(self)
+        else:
+            raise AttributeError('Either table name or alias is not unique.')
+
+    def unique(self, alias, tb_complete_name):
+        for tb in self.created_objects:
+            if alias == tb.table_alias:
+                return False
+            if tb_complete_name == tb.table_name + tb.table_safra:
+                return False
+        return True
 
     def __str__(self):
         return self.database + ' ' + self.table_alias + ' ' + self.table_safra
 
 
 d1 = Table('database','table1','a','201907')
-d2 = Table('database','table1','a','201908')
+d2 = Table('database','table1','b','201908')
 # query = SelectQuery.create('database','table1','a','201907')\
 #         .left_join('database','table2','b','201907')
 
