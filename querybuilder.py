@@ -5,9 +5,9 @@ class QueryBuilder:
                                   table_alias,
                                   table_safra,
                                   table_key)
-        
+
     def left_join(self, database, table_name, table_alias, table_safra, table_key='nr_cpf_cnpj'):
-        self.__root.tables_to_left_join.append(Table(database,
+        self.__root.join_list.append(Table(database,
                                                      table_name,
                                                      table_alias,
                                                      table_safra,
@@ -26,10 +26,10 @@ class SelectQuery:
                                 table_alias,
                                 table_safra,
                                 table_key)
-        self.tables_to_left_join = []
+        self.join_list = []
 
     def __str__(self):
-        if len(self.tables_to_left_join)>0:
+        if len(self.join_list)>0:
             return f'select * from\n\t{self.main_table.database}.{self.main_table.table_name}_{self.main_table.table_safra} {self.main_table.table_alias}' + \
                     ''.join(['\nleft join\n\t{db}.{tb}_{safra} {alias}\n\ton {main_table_alias}.{main_table_key}={alias}.{key}'.format(
                         db=tb.database,
@@ -38,11 +38,11 @@ class SelectQuery:
                         alias=tb.table_alias,
                         main_table_alias=self.main_table.table_alias,
                         main_table_key=self.main_table.table_key,
-                        key=tb.table_key) for tb in self.tables_to_left_join                        
+                        key=tb.table_key) for tb in self.join_list
                         ])
         else:
             return f'select * from {self.main_table.database}.{self.main_table.table_name}{self.main_table.table_safra}{self.main_table.table_alias}'
-                   
+
 
     @staticmethod
     def create(database, table_name, table_alias, table_safra, table_key='nr_cpf_cnpj'):
@@ -53,7 +53,18 @@ class SelectQuery:
                             table_key
                 )
 
-class Table:
+class Singleton(type):
+    """docstring for Singleton."""
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls)\
+            .__call__(*args,**kwargs)
+        return cls._instances[cls]
+
+
+class Table(metaclass=Singleton):
     def __init__(self, database, table_name, table_alias, table_safra, table_key='nr_cpf_cnpj'):
         self.database = database
         self.table_name = table_name
@@ -61,7 +72,13 @@ class Table:
         self.table_safra = table_safra
         self.table_key = table_key
 
-query = SelectQuery.create('database','table1','a','201907')\
-        .left_join('database','table2','b','201907')
+    def __str__(self):
+        return self.database + ' ' + self.table_alias + ' ' + self.table_safra
 
-print(query)
+
+d1 = Table('database','table1','a','201907')
+d2 = Table('database','table1','a','201908')
+# query = SelectQuery.create('database','table1','a','201907')\
+#         .left_join('database','table2','b','201907')
+
+print(d1, d2, d1==d2)

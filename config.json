@@ -1,0 +1,13 @@
+{
+    "modelo1": {
+        "tabela1": {
+            "xpto1": "m0",
+            "xpto2": "m2"
+        },
+        "tabela2": {
+            "xpto3": "m0",
+            "xpto4": "m2",
+            "xpto5": "m0"
+        }
+    }
+}
