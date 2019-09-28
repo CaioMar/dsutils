@@ -1,13 +1,43 @@
 {
-    "modelo1": {
-        "tabela1": {
-            "xpto1": "m0",
-            "xpto2": "m2"
+    "123456": {
+        "tabela1_{}": {
+            "MAIN": true,
+            "ALIAS": "tb1_{}",
+            "DATABASE": "db",
+            "VARS": {
+                "var1_{}": {
+                    "SAFRAS": [
+                        0,
+                        1
+                    ],
+                    "DEFASAGEM": 0
+                },
+                "var2_{}": {
+                    "SAFRAS": [
+                        0
+                    ],
+                    "DEFASAGEM": 0
+                }
+            }
         },
-        "tabela2": {
-            "xpto3": "m0",
-            "xpto4": "m2",
-            "xpto5": "m0"
+        "tabela2_{}": {
+            "ALIAS": "tb2_{}",
+            "DATABASE": "db",
+            "VARS": {
+                "var3_{}": {
+                    "SAFRAS": [
+                        0
+                    ],
+                    "DEFASAGEM": 1
+                },
+                "var4_{}": {
+                    "SAFRAS": [
+                        0,
+                        3
+                    ],
+                    "DEFASAGEM": 0
+                }
+            }
         }
     }
 }
