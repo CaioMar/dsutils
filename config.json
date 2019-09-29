@@ -1,7 +1,7 @@
 {
     "123456": {
         "tabela1_{}": {
-            "MAIN": true,
+            "MAIN": 0,
             "ALIAS": "tb1_{}",
             "DATABASE": "db",
             "VARS": {
