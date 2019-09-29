@@ -8,5 +8,8 @@ safra = '201901'
 query_dict = config["123456"]
 
 print(qb.ConfigQueryReader(safra, query_dict).build())
+
 print(qb.ConfigQueryReader(safra, query_dict).build())
+
 print(qb.ConfigQueryReader(safra, query_dict).build())
+test = qb.ConfigQueryReader(safra, query_dict).build()
