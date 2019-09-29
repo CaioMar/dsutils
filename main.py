@@ -9,3 +9,4 @@ query_dict = config["123456"]
 
 print(qb.ConfigQueryReader(safra, query_dict).build())
 print(qb.ConfigQueryReader(safra, query_dict).build())
+print(qb.ConfigQueryReader(safra, query_dict).build())

@@ -36,9 +36,12 @@ class Query:
     def _get_all_variables(self):
         all_vars = []
         for tb in self._all_tables:
-            all_vars += ['\n'.join(['\t{}.{} as {}'.format(tb.table_alias,var, var[:-6])
-                                    for var in tb.variables])]
-        all_vars = '\n'.join(all_vars)
+            all_vars += [',\n'.join(['\t{}.{} as {}'.format(tb.table_alias,var.name, var.alias)
+                                     if var.flag_alias else
+                                     '\t{}.{}'.format(tb.table_alias,var.name)
+                                     for var in tb.variables])]
+        all_vars = ',\n'.join(all_vars)
+        print(all_vars)
         return all_vars
 
     def __str__(self):
@@ -96,6 +99,16 @@ class QueryMainTableBuilder(QueryBuilder):
         self.query._all_tables.append(self.query.main_table)
         return self
 
+class Variable(object):
+    """docstring for Variables."""
+
+    def __init__(self, table, name, alias='', flag_alias=False):
+        self.name = name
+        self.table = table
+        self.alias = alias
+        self.flag_alias = flag_alias
+
+
 class Table:
 
     def __init__(self, database, table_name, table_alias, table_safra, table_key='nr_cpf_cnpj'):
@@ -106,8 +119,14 @@ class Table:
         self.table_key = table_key
         self.variables = []
 
-    def add_var(self, var_name):
-        self.variables.append(var_name)
+    def add_var(self, var_name, var_alias='', flag_alias=False):
+        find_feature = [feature for feature in self.variables if feature.name.lower()==var_name.lower()]
+        if len(find_feature)==0 and len(var_name.strip())>0:
+            self.variables.append(Variable(table=self,
+                                           name=var_name,
+                                           alias=var_alias,
+                                           flag_alias=flag_alias
+                                           ))
         return self
 
 class ConfigQueryReader:
