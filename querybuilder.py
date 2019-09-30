@@ -115,16 +115,24 @@ class QueryCaseWhenBuilder(QueryBuilder):
     def _create_case_when(self, tb, var_name, transformation):
         case = "case\n"
         whens = []
-        for line in transformation[:-1]:
-            when = "\twhen"
-            for condition in line[:-1]:
-                when += " {tb_alias}.{var_name}" + condition
-            when += " then " + str(line[-1])
-            whens += [when]
-        whens = "\n\t".join(whens)
         else_ = ''
-        if len(transformation[-1])==1:
+        if transformation[-1][0]=="else":
+            for line in transformation[:-1]:
+                when = "\twhen"
+                for condition in line[:-1]:
+                    when += " {tb_alias}.{var_name}" + condition
+                when += " then " + str(line[-1])
+                whens += [when]
+            whens = "\n\t".join(whens)
             else_ = "\n\telse {} end".format(transformation[-1][0])
+        else:
+            for line in transformation:
+                when = "\twhen"
+                for condition in line[:-1]:
+                    when += " {tb_alias}.{var_name}" + condition
+                when += " then " + str(line[-1])
+                whens += [when]
+            whens = "\n\t".join(whens)
         case_when = case + whens + else_
         return case_when.format(tb_alias=tb.database, var_name=var_name)
 
