@@ -22,5 +22,6 @@ modelos = \
 }}
 
 
-with open('./config.json','w') as file:
+
+with open('./config2.json','w') as file:
     json.dump(fp=file, obj=modelos, indent=4)
