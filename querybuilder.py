@@ -124,7 +124,7 @@ class QueryCaseWhenBuilder(QueryBuilder):
                 when += " then " + str(line[-1])
                 whens += [when]
             whens = "\n\t".join(whens)
-            else_ = "\n\telse {} end".format(transformation[-1][0])
+            else_ = "\n\telse {} end".format(transformation[-1][1])
         else:
             for line in transformation:
                 when = "\twhen"
