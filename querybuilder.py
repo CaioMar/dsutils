@@ -40,8 +40,8 @@ class Query(object):
         return '\t{}.{} {}'.format(self.main_table.database,self.main_table.table_name, self.main_table.table_alias)
 
     def _get_all_variables(self):
-        all_vars = ',\n'.join(['\t{}.{} as {}'.format(var.table.table_alias,var.name, var.alias)
-                                     if var.flag_alias else
+        all_vars = ',\n'.join(['\t{} as {}'.format(var.name, var.alias)
+                                     if var.fl_case_when else
                                      '\t{}.{}'.format(var.table.table_alias,var.name)
                                      for var in self._variables])
         return all_vars
@@ -76,6 +76,10 @@ class QueryBuilder(object):
     def main_table(self):
         return QueryMainTableBuilder(self.query)
 
+    @property
+    def case_when(self):
+        return QueryCaseWhenBuilder(self.query)
+
     # Next properties I will implement for the QueryBuilder
     # @property
     # def union_all(self):
@@ -95,6 +99,34 @@ class QueryBuilder(object):
 
     def build(self):
         return self.query
+
+class QueryCaseWhenBuilder(QueryBuilder):
+    def __init__(self, query):
+        super().__init__(query)
+
+    def add(self, table_name, var_name, var_alias, transformation):
+        if not self.query._in_var_list(var_name):
+            tb = self.query._get_table_ref(table_name=table_name)
+            var_name = self._create_case_when(tb, var_name, transformation)
+            tb.add_var(var_name, var_alias=var_alias, fl_case_when=True)
+            self.query._variables.append(tb.variables[-1])
+        return self
+
+    def _create_case_when(self, tb, var_name, transformation):
+        case = "case\n"
+        whens = []
+        for line in transformation[:-1]:
+            when = "\twhen"
+            for condition in line[:-1]:
+                when += " {tb_alias}.{var_name}" + condition
+            when += " then " + str(line[-1])
+            whens += [when]
+        whens = "\n\t".join(whens)
+        else_ = ''
+        if len(transformation[-1])==1:
+            else_ = "\n\telse {} end".format(transformation[-1][0])
+        case_when = case + whens + else_
+        return case_when.format(tb_alias=tb.database, var_name=var_name)
 
 class QueryVariableBuilder(QueryBuilder):
     def __init__(self, query):
@@ -138,12 +170,13 @@ class QueryMainTableBuilder(QueryBuilder):
 
 class Variable:
 
-    def __init__(self, table, name, var_type, alias='', flag_alias=False):
+    def __init__(self, table, name, alias='', fl_case_when=False, flag_alias=False):
         self.name = name
         self.table = table
         self.alias = alias
         self.flag_alias = flag_alias
-        self.type = var_type
+        # self.type = var_type
+        self.fl_case_when = fl_case_when
 
 # Need to think of some smart way to apply this class so I can with more complex
 # relationships between tables
@@ -171,12 +204,13 @@ class Table:
             return True
         return False
 
-    def add_var(self, var_name, var_alias='', flag_alias=False):
+    def add_var(self, var_name, var_alias='', flag_alias=False, fl_case_when=False):
         if (not self._in_var_list(var_name)) and (self._var_name_checker(var_name)):
             self.variables.append(Variable(table=self,
                                            name=var_name.strip(),
                                            alias=var_alias.strip(),
-                                           flag_alias=flag_alias
+                                           flag_alias=flag_alias,
+                                           fl_case_when=fl_case_when
                                            ))
         return self
 
@@ -226,10 +260,22 @@ class ConfigQueryReader:
                     self.query.left_join.add(tb["DATABASE"],
                                              tb_name.format(m_add(self.safra, -mX)),
                                              tb["ALIAS"].format(m_add(self.safra, -mX)),
-                                             m_add(self.safra,-mX)).\
-                               variable.add(tb_name.format(m_add(self.safra, -mX)),
+                                             m_add(self.safra,-mX))
+                    if "TRANSFORMATIONS" not in var.keys():
+                        self.query.variable.add(tb_name.format(m_add(self.safra, -mX)),
                                              var_name.format(m_add(self.safra,-(mX+var["DEFASAGEM"])))
                                              )
+                    elif str(mX) in var["TRANSFORMATIONS"].keys():
+                        self.query.case_when.add(tb_name.format(m_add(self.safra, -mX)),
+                                             var_name.format(m_add(self.safra,-(mX+var["DEFASAGEM"]))),
+                                             var["ALIAS"],
+                                             var["TRANSFORMATIONS"][str(mX)]
+                                             )
+                    else:
+                        self.query.variable.add(tb_name.format(m_add(self.safra, -mX)),
+                                             var_name.format(m_add(self.safra,-(mX+var["DEFASAGEM"])))
+                                             )
+
         self.query = self.query.build()
 
         return self

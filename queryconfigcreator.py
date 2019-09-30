@@ -7,8 +7,8 @@ modelos = \
 "ALIAS":"tb1_{}",
 "DATABASE":"db",
 "VARS":{
-"var1_{}":{"SAFRAS":[0,1],"DEFASAGEM":0},
-"var2_{}":{"SAFRAS":[0],"DEFASAGEM":0}
+"var1_{}":{"SAFRAS":[0,1],"DEFASAGEM":0, "ALIAS":"var1_", "TRANSFORMATIONS":{1:[('=0',11),('=1',12),(15)]}},
+"var2_{}":{"SAFRAS":[0],"DEFASAGEM":0, "ALIAS":"var2_", "TRANSFORMATIONS":{0:[('>=0','<=0',11),('>=1','<=2',12),(15)]}}
 }
 },
 "tabela2_{}":{
