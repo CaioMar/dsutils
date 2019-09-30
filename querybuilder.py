@@ -37,15 +37,13 @@ class Query(object):
                                                                                   main_key=self.main_table.table_key) for tb in self._join_list])
 
     def _get_main_table(self):
-        return '\t{} {}'.format(self.main_table.table_name, self.main_table.table_alias)
+        return '\t{}.{} {}'.format(self.main_table.database,self.main_table.table_name, self.main_table.table_alias)
 
     def _get_all_variables(self):
-        # all_vars = []
         all_vars = ',\n'.join(['\t{}.{} as {}'.format(var.table.table_alias,var.name, var.alias)
                                      if var.flag_alias else
                                      '\t{}.{}'.format(var.table.table_alias,var.name)
                                      for var in self._variables])
-        # all_vars = ',\n'.join(all_vars)
         return all_vars
 
     def __str__(self):
@@ -78,6 +76,23 @@ class QueryBuilder(object):
     def main_table(self):
         return QueryMainTableBuilder(self.query)
 
+    # Next properties I will implement for the QueryBuilder
+    # @property
+    # def union_all(self):
+    #     return QueryUnionAllBuilder(self.query)
+    #
+    # @property
+    # def group_by(self):
+    #     return QueryGroupByBuilder(self.query)
+    #
+    # @property
+    # def where(self):
+    #     return QueryWhereBuilder(self.query)
+    #
+    # @property
+    # def primitive(self):
+    #     return QueryPrimitiveBuilder(self.query)
+
     def build(self):
         return self.query
 
@@ -109,7 +124,6 @@ class QueryLeftJoinBuilder(QueryBuilder):
 
 
 class QueryMainTableBuilder(QueryBuilder):
-    """docstring for QueryMainTableBuilder."""
     def __init__(self, query):
         super().__init__(query)
 
@@ -123,16 +137,17 @@ class QueryMainTableBuilder(QueryBuilder):
         return self
 
 class Variable:
-    """docstring for Variables."""
 
-    def __init__(self, table, name, alias='', flag_alias=False):
+    def __init__(self, table, name, var_type, alias='', flag_alias=False):
         self.name = name
         self.table = table
         self.alias = alias
         self.flag_alias = flag_alias
+        self.type = var_type
 
+# Need to think of some smart way to apply this class so I can with more complex
+# relationships between tables
 class Relationship:
-    """docstring for Relationship."""
 
     def __init__(self, left_table, right_table, left_table_keys, right_table_keys):
         self.left_table = left_table
@@ -173,7 +188,6 @@ class Table:
 
 
 class ConfigQueryReader:
-    """docstring for ConfigQueryReader."""
 
     def __init__(self, safra, query_dict):
         self.query = None
@@ -181,8 +195,7 @@ class ConfigQueryReader:
         self.query_dict = query_dict
 
     def get_main_table(self):
-        # if len(self.query_dict.keys()) == 0:
-        #     raise ValueError("No tables in table dict.")
+
         main_tb_name = ''
         main_tb = None
         main_count_validator = 0
@@ -201,9 +214,7 @@ class ConfigQueryReader:
     def build(self):
 
         tb_name, tb = self.get_main_table()
-        #maybe the problem is I need to check if there is already a table when I first create it
-        #need to create an initializer that returns table reference if table already exists =/
-        #how do I do this?
+
         self.query = Query.create().main_table.add(tb["DATABASE"],
                                                tb_name.format(m_add(self.safra,tb['MAIN'])),
                                                tb["ALIAS"].format(m_add(self.safra,tb['MAIN'])),
@@ -215,8 +226,8 @@ class ConfigQueryReader:
                     self.query.left_join.add(tb["DATABASE"],
                                              tb_name.format(m_add(self.safra, -mX)),
                                              tb["ALIAS"].format(m_add(self.safra, -mX)),
-                                             m_add(self.safra,-mX)).variable.\
-                                             add(tb_name.format(m_add(self.safra, -mX)),
+                                             m_add(self.safra,-mX)).\
+                               variable.add(tb_name.format(m_add(self.safra, -mX)),
                                              var_name.format(m_add(self.safra,-(mX+var["DEFASAGEM"])))
                                              )
         self.query = self.query.build()
@@ -225,65 +236,3 @@ class ConfigQueryReader:
 
     def __str__(self):
         return str(self.query)
-
-
-
-if __name__ == '__main__':
-
-    # Testing
-
-    safra = pd.Timestamp.now().strftime(format='%Y%m')
-    print(m_add(safra, -1))
-
-
-
-# from enum import Enum, auto
-    # @staticmethod
-    # def create(database, table_name, table_alias, table_safra, table_key='nr_cpf_cnpj'):
-    #     return QueryBuilder(database,
-    #                         table_name,
-    #                         table_alias,
-    #                         table_safra,
-    #                         table_key
-    #             )
-# class Singleton(type):
-#     """docstring for Singleton."""
-#     _instances = {}
-#
-#     def __call__(cls, *args, **kwargs):
-#         if cls not in cls._instances:
-#             cls._instances[cls] = super(Singleton, cls)\
-#             .__call__(*args,**kwargs)
-#         return cls._instances[cls]
-#
-# class TableSwitch(Enum):
-#     """docstring for TableSwitch."""
-#     VALID = auto()
-#     INVALID = auto()
-#
-# class TableTriggers(Enum):
-#     TABLE_NAME_CHECK = auto()
-#     TABLE_ALIAS_CHECK = auto()
-
-
-
-    # @staticmethod
-    # def create_table(database, table_name, table_alias, table_safra, table_key='nr_cpf_cnpj'):
-    #     # print(1)
-    #     # print(self.__state)
-    #     return Table(database,
-    #                  table_name,
-    #                  table_alias,
-    #                  table_safra,
-    #                  table_key)
-
-    # def _unique(self, alias, tb_complete_name):
-    #     for tb in self.__created_objects:
-    #         if alias == tb.table_alias.format(tb.table_safra): return False
-    #         if tb_complete_name == tb.table_name.format(tb.table_safra): return False
-    #     return True
-    #
-    # def _get_table(self, tb_complete_name):
-    #     for tb in self.__created_objects:
-    #         if tb_complete_name == tb.table_name.format(tb.table_safra): return tb
-    #     raise ValueError('Table doesn\'t exist.')
