@@ -134,7 +134,7 @@ class QueryCaseWhenBuilder(QueryBuilder):
                 whens += [when]
             whens = "\n\t".join(whens)
         case_when = case + whens + else_
-        return case_when.format(tb_alias=tb.database, var_name=var_name)
+        return case_when.format(tb_alias=tb.table_alias, var_name=var_name)
 
 class QueryVariableBuilder(QueryBuilder):
     def __init__(self, query):
