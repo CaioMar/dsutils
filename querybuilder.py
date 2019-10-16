@@ -309,13 +309,43 @@ class UnionAllSafrasStrategy(BaseReaderStrategy):
         return self.query
 
 class StackedTableQueryStrategy(BaseReaderStrategy):
+    def _add_var_to_subquery_dict(self, subquery_dict, tb, tb_name, var, var_name, safra, mX):
+        if "TRANSFORMATIONS" not in var.keys():
+            subquery_dict[tb["ALIAS"].format(m_add(safra, -mX))].variable.\
+                                 add(tb_name.format(m_add(safra, -mX)),
+                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
+                                 )
+        elif str(mX) in var["TRANSFORMATIONS"].keys():
+            subquery_dict[tb["ALIAS"].format(m_add(safra, -mX))].case_when.\
+                                 add(tb_name.format(m_add(safra, -mX)),
+                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"]))),
+                                 var["ALIAS"],
+                                 var["TRANSFORMATIONS"][str(mX)]
+                                 )
+        else:
+            subquery_dict[tb["ALIAS"].format(m_add(safra, -mX))].variable.\
+                                 add(tb_name.format(m_add(safra, -mX)),
+                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
+                                 )
+
+    def _add_var_to_stacked_query(self, stacked_query, subquery, vr):
+        name = '({})'.format(str(subquery.build()))
+        if vr.alias != '':
+            stacked_query.variable.\
+                        add(name,
+                            vr.alias)
+        else:
+            stacked_query.variable.\
+                    add(name,
+                        vr.name)
+
     def build(self):
 
         safra = self.safras[0]
 
         tb_name, tb = self.get_main_table(safra)
 
-        main_tb_name = tb["ALIAS"].format(m_add(safra,tb['MAIN']))
+        main_tb_alias = tb["ALIAS"].format(m_add(safra,tb['MAIN']))
 
         subquery_dict = {}
 
@@ -333,23 +363,7 @@ class StackedTableQueryStrategy(BaseReaderStrategy):
             for var_name, var in tb["VARS"].items():
                 for mX in var["SAFRAS"]:
                     if tb["ALIAS"].format(m_add(safra, -mX)) in subquery_dict.keys():
-                        if "TRANSFORMATIONS" not in var.keys():
-                            subquery_dict[tb["ALIAS"].format(m_add(safra, -mX))].variable.\
-                                                 add(tb_name.format(m_add(safra, -mX)),
-                                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
-                                                 )
-                        elif str(mX) in var["TRANSFORMATIONS"].keys():
-                            subquery_dict[tb["ALIAS"].format(m_add(safra, -mX))].case_when.\
-                                                 add(tb_name.format(m_add(safra, -mX)),
-                                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"]))),
-                                                 var["ALIAS"],
-                                                 var["TRANSFORMATIONS"][str(mX)]
-                                                 )
-                        else:
-                            subquery_dict[tb["ALIAS"].format(m_add(safra, -mX))].variable.\
-                                                 add(tb_name.format(m_add(safra, -mX)),
-                                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
-                                                 )
+                        self._add_var_to_subquery_dict(subquery_dict, tb, tb_name, var, var_name, safra, mX)
                     else:
                         subquery_dict[tb["ALIAS"].format(m_add(safra, -mX))] = \
                                                Query.create().main_table.add(tb["DATABASE"],
@@ -362,55 +376,23 @@ class StackedTableQueryStrategy(BaseReaderStrategy):
                                                ).\
                                                variable.\
                                                add(tb_name.format(m_add(safra, -mX)), 'nr_cpf_cnpj')
-                        if "TRANSFORMATIONS" not in var.keys():
-                            subquery_dict[tb["ALIAS"].format(m_add(safra, -mX))].variable.\
-                                                 add(tb_name.format(m_add(safra, -mX)),
-                                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
-                                                 )
-                        elif str(mX) in var["TRANSFORMATIONS"].keys():
-                            subquery_dict[tb["ALIAS"].format(m_add(safra, -mX))].case_when.\
-                                                 add(tb_name.format(m_add(safra, -mX)),
-                                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"]))),
-                                                 var["ALIAS"],
-                                                 var["TRANSFORMATIONS"][str(mX)]
-                                                 )
-                        else:
-                            subquery_dict[tb["ALIAS"].format(m_add(safra, -mX))].variable.\
-                                                 add(tb_name.format(m_add(safra, -mX)),
-                                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
-                                                 )
+                        self._add_var_to_subquery_dict(subquery_dict, tb, tb_name, var, var_name, safra, mX)
 
         stacked_query = Query.create().main_table.add('',
-                           '({})'.format(str(subquery_dict[main_tb_name].build())),
-                           main_tb_name,
+                           '({})'.format(str(subquery_dict[main_tb_alias].build())),
+                           main_tb_alias,
                            0)
-        for vr in subquery_dict[main_tb_name].query._variables:
-           if vr.alias != '':
-               stacked_query.variable.\
-                    add('({})'.format(str(subquery_dict[main_tb_name].build())),
-                        vr.alias)
-           else:
-               stacked_query.variable.\
-                    add('({})'.format(str(subquery_dict[main_tb_name].build())),
-                        vr.name)
+        for vr in subquery_dict[main_tb_alias].query._variables:
+           self._add_var_to_stacked_query(stacked_query,subquery_dict[main_tb_alias],vr)
 
         for tb_alias, subquery in subquery_dict.items():
-            if tb_alias != main_tb_name:
-                name = '({})'.format(str(subquery.build()))
+            if tb_alias != main_tb_alias:
                 stacked_query.left_join.add('',
-                                        name,
+                                        '({})'.format(str(subquery.build())),
                                         tb_alias,
                                         0)
                 for vr in subquery.query._variables:
-                   if vr.alias != '':
-                       stacked_query.variable.\
-                            add(name,
-                                vr.alias)
-                   else:
-                       stacked_query.variable.\
-                            add(name,
-                                vr.name)
-
+                    self._add_var_to_stacked_query(stacked_query,subquery,vr)
 
         self.query = str(stacked_query.build())
 
