@@ -7,7 +7,8 @@ with open('./config.json','rb') as file:
 safras = ['201901']
 query_dict = config["123456"]
 
-print(qb.ConfigQueryReader(safras, query_dict).set_strategy().build())
+print(qb.ConfigQueryReader(safras, query_dict)\
+.build(True))
 
 # print(qb.ConfigQueryReader(safra, query_dict).build())
 #
