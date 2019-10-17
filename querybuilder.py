@@ -32,13 +32,13 @@ class Query(object):
     def _get_filters(self):
         if len(self._filters)>0:
             filter_start = 'WHERE \n'
-            filters = '\nAND\n'.join(['{} {} {}'.format(filter.var_name,filter.operator,filter.value)  for filter in self._filters])
+            filters = '\nAND\n'.join(['\t{} {} {}'.format(filter.var_name,filter.operator,filter.value)  for filter in self._filters])
             return filter_start + filters
         else:
             return ''
 
     def _get_table_joins(self):
-        return '\n'.join(['''left join\n\t{db}.{tb} {alias}\n\ton {main_alias}.{main_key}={alias}.{key}'''.format(db=tb.database,
+        return '\n'.join(['''LEFT JOIN\n\t{db}.{tb} {alias}\nON {main_alias}.{main_key}={alias}.{key}'''.format(db=tb.database,
                                                                                   tb=tb.table_name,
                                                                                   alias=tb.table_alias,
                                                                                   key=tb.table_key,
@@ -46,7 +46,7 @@ class Query(object):
                                                                                   main_key=self.main_table.table_key)
                                                                                   if tb.database != ''
                                                                                   else
-                          '''left join\n\t{tb} {alias}\n\ton {main_alias}.{main_key}={alias}.{key}'''.format(tb=tb.table_name,
+                          '''LEFT JOIN\n\t{tb} {alias}\nON {main_alias}.{main_key}={alias}.{key}'''.format(tb=tb.table_name,
                                                                                                       alias=tb.table_alias,
                                                                                                       key=tb.table_key,
                                                                                                       main_alias=self.main_table.table_alias,
@@ -152,24 +152,24 @@ class QueryCaseWhenBuilder(QueryBuilder):
         return self
 
     def _create_case_when(self, tb, var_name, transformation):
-        case = "case\n"
+        case = "CASE\n"
         whens = []
         else_ = ''
         if transformation[-1][0]=="else":
             for line in transformation[:-1]:
-                when = "\twhen"
+                when = "\tWHEN"
                 for condition in line[:-1]:
                     when += " {tb_alias}.{var_name}" + condition
-                when += " then " + str(line[-1])
+                when += " THEN " + str(line[-1])
                 whens += [when]
             whens = "\n\t".join(whens)
-            else_ = "\n\telse {} end".format(transformation[-1][1])
+            else_ = "\n\tELSE {} END".format(transformation[-1][1])
         else:
             for line in transformation:
-                when = "\twhen"
+                when = "\tWHEN"
                 for condition in line[:-1]:
                     when += " {tb_alias}.{var_name}" + condition
-                when += " then " + str(line[-1])
+                when += " THEN " + str(line[-1])
                 whens += [when]
             whens = "\n\t".join(whens)
         case_when = case + whens + else_
@@ -275,6 +275,38 @@ class BaseReaderStrategy:
         self.safras = safras
         self.query_dict = query_dict
 
+    def _get_safra(self):
+        if type(self.safras)==list:
+            safra = self.safras[0]
+        elif type(self.safras)==str:
+            safra = self.safras
+        return safra
+
+    def _get_var_name(self, var, var_name, safra, mX):
+        if "TRANSFORMATIONS" not in var.keys():
+            return var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
+        elif str(mX) in var["TRANSFORMATIONS"].keys():
+            return var["ALIAS"].format(m_add(safra,-(mX+var["DEFASAGEM"])))
+        else:
+            return var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
+
+    def _add_var_to_query(self, query, tb_name, var, var_name, safra, mX):
+        if "TRANSFORMATIONS" not in var.keys():
+            query.variable.add(tb_name.format(m_add(safra, -mX)),
+                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
+                                 )
+        elif str(mX) in var["TRANSFORMATIONS"].keys():
+            query.case_when.add(tb_name.format(m_add(safra, -mX)),
+                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"]))),
+                                 var["ALIAS"],
+                                 var["TRANSFORMATIONS"][str(mX)]
+                                 )
+        else:
+            query.variable.add(tb_name.format(m_add(safra, -mX)),
+                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
+                                 )
+
+
     def get_main_table(self, safra):
 
         main_tb_name = ''
@@ -297,11 +329,10 @@ class BaseReaderStrategy:
 class UnionAllSafrasStrategy(BaseReaderStrategy):
     def build(self):
 
-        self.query = "select * from \n ("
+        self.query = "SELECT * FROM \n ("
 
         subqueries = []
         for safra in self.safras:
-
             subqueries.append(str(SimpleQueryStrategy([safra], self.query_dict).build()))
 
         self.query += (')\n UNION ALL \n(').join(subqueries) + ')'
@@ -309,24 +340,6 @@ class UnionAllSafrasStrategy(BaseReaderStrategy):
         return self.query
 
 class StackedTableQueryStrategy(BaseReaderStrategy):
-    def _add_var_to_subquery_dict(self, subquery_dict, tb, tb_name, var, var_name, safra, mX):
-        if "TRANSFORMATIONS" not in var.keys():
-            subquery_dict[tb["ALIAS"].format(m_add(safra, -mX))].variable.\
-                                 add(tb_name.format(m_add(safra, -mX)),
-                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
-                                 )
-        elif str(mX) in var["TRANSFORMATIONS"].keys():
-            subquery_dict[tb["ALIAS"].format(m_add(safra, -mX))].case_when.\
-                                 add(tb_name.format(m_add(safra, -mX)),
-                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"]))),
-                                 var["ALIAS"],
-                                 var["TRANSFORMATIONS"][str(mX)]
-                                 )
-        else:
-            subquery_dict[tb["ALIAS"].format(m_add(safra, -mX))].variable.\
-                                 add(tb_name.format(m_add(safra, -mX)),
-                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
-                                 )
 
     def _add_var_to_stacked_query(self, stacked_query, subquery, vr):
         name = '({})'.format(str(subquery.build()))
@@ -363,20 +376,20 @@ class StackedTableQueryStrategy(BaseReaderStrategy):
             for var_name, var in tb["VARS"].items():
                 for mX in var["SAFRAS"]:
                     if tb["ALIAS"].format(m_add(safra, -mX)) in subquery_dict.keys():
-                        self._add_var_to_subquery_dict(subquery_dict, tb, tb_name, var, var_name, safra, mX)
+                        self._add_var_to_query(subquery_dict[tb["ALIAS"].format(m_add(safra, -mX))], tb_name, var, var_name, safra, mX)
                     else:
                         subquery_dict[tb["ALIAS"].format(m_add(safra, -mX))] = \
                                                Query.create().main_table.add(tb["DATABASE"],
                                                tb_name.format(m_add(safra, -mX)),
                                                tb["ALIAS"].format(m_add(safra, -mX)),
                                                m_add(safra,-mX)).where.add(
-                                               tb["ALIAS"].format(m_add(safra, -mX))+'.data_ref',
+                                               '{}.{}'.format(tb["ALIAS"].format(m_add(safra, -mX)),tb["SAFRADA"]),
                                                '=',
                                                m_add(safra, -mX)
                                                ).\
                                                variable.\
                                                add(tb_name.format(m_add(safra, -mX)), 'nr_cpf_cnpj')
-                        self._add_var_to_subquery_dict(subquery_dict, tb, tb_name, var, var_name, safra, mX)
+                        self._add_var_to_query(subquery_dict[tb["ALIAS"].format(m_add(safra, -mX))], tb_name, var, var_name, safra, mX)
 
         stacked_query = Query.create().main_table.add('',
                            '({})'.format(str(subquery_dict[main_tb_alias].build())),
@@ -399,42 +412,83 @@ class StackedTableQueryStrategy(BaseReaderStrategy):
         return self.query
 
 class SimpleQueryStrategy(BaseReaderStrategy):
+
     def build(self):
 
-        safra = self.safras[0]
+        safra = self._get_safra()
 
         tb_name, tb = self.get_main_table(safra)
 
-        subquery = Query.create().main_table.add(tb["DATABASE"],
-                                               tb_name.format(m_add(safra,tb['MAIN'])),
-                                               tb["ALIAS"].format(m_add(safra,tb['MAIN'])),
-                                               m_add(safra,tb['MAIN']))
+        new_tb_name = tb_name.format(m_add(safra,tb['MAIN']))
+        db_name = tb["DATABASE"]
+        if "SAFRADA" in tb.keys():
+            db_name = ''
+            new_tb_name = '({})'.format(str(SingleTableQueryStrategy(safra, {tb_name:tb}).\
+                                        build(tb['MAIN'])))
+
+        query = Query.create().main_table.add(db_name,
+                                              new_tb_name,
+                                              tb["ALIAS"].format(m_add(safra,tb['MAIN'])),
+                                              m_add(safra,tb['MAIN']))
 
         for tb_name, tb in self.query_dict.items():
             for var_name, var in tb["VARS"].items():
                 for mX in var["SAFRAS"]:
-                    subquery.left_join.add(tb["DATABASE"],
-                                             tb_name.format(m_add(safra, -mX)),
-                                             tb["ALIAS"].format(m_add(safra, -mX)),
-                                             m_add(safra,-mX))
-                    if "TRANSFORMATIONS" not in var.keys():
-                        subquery.variable.add(tb_name.format(m_add(safra, -mX)),
-                                             var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
-                                             )
-                    elif str(mX) in var["TRANSFORMATIONS"].keys():
-                        subquery.case_when.add(tb_name.format(m_add(safra, -mX)),
-                                             var_name.format(m_add(safra,-(mX+var["DEFASAGEM"]))),
-                                             var["ALIAS"],
-                                             var["TRANSFORMATIONS"][str(mX)]
-                                             )
-                    else:
-                        subquery.variable.add(tb_name.format(m_add(safra, -mX)),
-                                             var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
-                                             )
+                    if "SAFRADA" in tb.keys():
+                        subquery = SingleTableQueryStrategy(safra, {tb_name:tb})
+                        new_tb_name = '({})'.format(str(subquery.build(mX)))
+                        query.left_join.add('',
+                                            new_tb_name,
+                                            tb["ALIAS"].format(m_add(safra, -mX)),
+                                            m_add(safra,-mX))
 
-        self.query = str(subquery.build())
+                        query.variable.add(new_tb_name,
+                                           self._get_var_name(var, var_name, safra, mX)
+                                           )
+                    else:
+                        query.left_join.add(tb["DATABASE"],
+                                            tb_name.format(m_add(safra, -mX)),
+                                            tb["ALIAS"].format(m_add(safra, -mX)),
+                                            m_add(safra,-mX))
+
+                        self._add_var_to_query(query, tb_name, var, var_name, safra, mX)
+
+
+        self.query = str(query.build())
 
         return self.query
+
+class SingleTableQueryStrategy(BaseReaderStrategy):
+
+    def build(self, mX):
+
+        safra = self._get_safra()
+
+        tb_name = list(self.query_dict.keys())[0]
+        tb = self.query_dict[tb_name]
+
+        query = Query.create().main_table.add(tb["DATABASE"],
+                                                 tb_name.format(m_add(safra,-mX)),
+                                                 tb["ALIAS"].format(m_add(safra,-mX)),
+                                                 m_add(safra,-mX))
+
+        if "SAFRADA" in tb.keys():
+            query.where.add('{}.{}'.format(tb["ALIAS"].format(m_add(safra, -mX)),tb["SAFRADA"]),
+                                                   '=',
+                                                   m_add(safra, -mX))
+
+        query.variable.add(tb_name.format(m_add(safra, -mX)),
+                           "NR_CPF_CNPJ")
+
+        for var_name, var in tb["VARS"].items():
+            if mX in var["SAFRAS"]:
+                self._add_var_to_query(query, tb_name, var, var_name, safra, mX)
+
+
+        self.query = str(query.build())
+
+        return self.query
+
 
 class ConfigQueryReader:
 
@@ -452,9 +506,9 @@ class ConfigQueryReader:
     def _set_strategy(self,stacked):
         if stacked:
             self.query_strategy = StackedTableQueryStrategy(self.safras, self.query_dict)
-        elif len(self.safras)>1:
+        elif len(self.safras)>1 and type(self.safras)==list:
             self.query_strategy = UnionAllSafrasStrategy(self.safras, self.query_dict)
-        elif len(self.safras)==1:
+        elif (len(self.safras)==1 and type(self.safras)==list) or type(self.safras)==str:
             self.query_strategy = SimpleQueryStrategy(self.safras, self.query_dict)
 
     def __str__(self):

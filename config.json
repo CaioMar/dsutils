@@ -1,6 +1,8 @@
 {
     "123456": {
         "tabela1_{}": {
+            "SAFRADA":"DATA_REF_CARGA",
+            "TABLE_KEY":"NR_CPF_CNPJ",
             "MAIN": 0,
             "ALIAS": "tb1_{}",
             "DATABASE": "db",
@@ -57,6 +59,8 @@
             }
         },
         "tabela2_{}": {
+            "SAFRADA":"DATA_REF_CARGA",
+            "TABLE_KEY":"NR_CPF_CNPJ",
             "ALIAS": "tb2_{}",
             "DATABASE": "db",
             "VARS": {
