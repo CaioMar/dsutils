@@ -285,7 +285,7 @@ class BaseReaderStrategy:
     def _get_var_name(self, var, var_name, safra, mX):
         if "TRANSFORMATIONS" not in var.keys():
             return var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
-        elif str(mX) in var["TRANSFORMATIONS"].keys():
+        elif str(mX+var["DEFASAGEM"]) in var["TRANSFORMATIONS"].keys():
             return var["ALIAS"].format(m_add(safra,-(mX+var["DEFASAGEM"])))
         else:
             return var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
@@ -295,11 +295,11 @@ class BaseReaderStrategy:
             query.variable.add(tb_name.format(m_add(safra, -mX)),
                                  var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
                                  )
-        elif str(mX) in var["TRANSFORMATIONS"].keys():
+        elif str(mX+var["DEFASAGEM"]) in var["TRANSFORMATIONS"].keys():
             query.case_when.add(tb_name.format(m_add(safra, -mX)),
                                  var_name.format(m_add(safra,-(mX+var["DEFASAGEM"]))),
                                  var["ALIAS"],
-                                 var["TRANSFORMATIONS"][str(mX)]
+                                 var["TRANSFORMATIONS"][str(mX+var["DEFASAGEM"])]
                                  )
         else:
             query.variable.add(tb_name.format(m_add(safra, -mX)),
