@@ -1,19 +1,16 @@
-import querybuilder as qb
+"""
+Author: Caio Martins
+Since: 2019-12
+"""
 import json
 
-with open('./config.json','rb') as file:
-    config = json.load(fp=file)
+import querybuilder as qb
 
-safras = ['201901']
-query_dict = config["123456"]
+with open('./config.json', 'rb') as file:
+    CONFIG = json.load(fp=file)
 
-print(qb.ConfigQueryReader(safras, query_dict)\
+SAFRAS = ['201901']
+QUERY_DICT = CONFIG["123456"]
+
+print(qb.ConfigQueryReader(SAFRAS, QUERY_DICT)\
 .build())
-
-# print(qb.ConfigQueryReader(safra, query_dict).build())
-#
-# print(qb.ConfigQueryReader(safra, query_dict).build())
-# test = qb.ConfigQueryReader(safra, query_dict).build()
-print(type([1])==list)
-
-print({'a':1})
