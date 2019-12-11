@@ -7,12 +7,12 @@
             "DATABASE": "db",
             "VARS": {
                 "var1_{}": {
-                    "FILTER":{
-                    "0":[
-                      "=",
-                      1
-                    ]
-                    },
+                  "FILTER":{
+                  "0":[
+                    "=",
+                    1
+                  ]
+                  },
                     "SAFRAS": [
                         0,
                         1
@@ -70,12 +70,19 @@
             "DATABASE": "db",
             "VARS": {
                 "var3_{}": {
+
                     "SAFRAS": [
                         0
                     ],
                     "DEFASAGEM": 1
                 },
                 "var4_{}": {
+                  "FILTER":{
+                  "0":[
+                    "=",
+                    1
+                  ]
+                  },
                     "SAFRAS": [
                         0,
                         3

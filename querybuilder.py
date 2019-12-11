@@ -317,15 +317,14 @@ class BaseReaderStrategy:
                                  var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
                                  )
 
-    def _add_filter_to_query(self, query, tb_name, var, var_name, safra, mX):
+    def _add_filter_to_query(self, query, var, var_name, safra, mX):
         if "FILTER" not in var.keys():
             pass
-        elif str(mX) in var["FILTER"].keys():
-            query.where.add(tb_name.format(m_add(safra, -mX)),
-                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"]))),
-                                 var["ALIAS"],
-                                 var["TRANSFORMATIONS"][str(mX+var["DEFASAGEM"])]
-                                 )
+        elif str(mX+var["DEFASAGEM"]) in var["FILTER"].keys():
+            query.where.add(var_name.format(m_add(safra,-(mX+var["DEFASAGEM"]))),
+                            var["FILTER"][str(mX+var["DEFASAGEM"])][0],
+                            var["FILTER"][str(mX+var["DEFASAGEM"])][1]
+                            )
         else:
             pass
 
@@ -480,6 +479,7 @@ class SimpleQueryStrategy(BaseReaderStrategy):
 
                         self._add_var_to_query(query, tb_name, var, var_name, safra, mX)
 
+                        self._add_filter_to_query(query, var, var_name, safra, mX)
 
         self.query = str(query.build())
 
@@ -513,6 +513,8 @@ class SingleTableQueryStrategy(BaseReaderStrategy):
         for var_name, var in tb["VARS"].items():
             if mX in var["SAFRAS"]:
                 self._add_var_to_query(query, tb_name, var, var_name, safra, mX)
+
+                self._add_filter_to_query(query, var, var_name, safra, mX)
 
 
         self.query = str(query.build())
