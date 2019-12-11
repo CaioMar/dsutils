@@ -37,20 +37,31 @@ class Query(object):
         else:
             return ''
 
+    def _gen_join_condition(self, tb):
+        if len(tb.table_key) > 1:
+            return ' AND\n'.join(["{main_alias}.{main_key}={alias}.{key}".format(alias=tb.table_alias,
+                                                                                 key=key,
+                                                                                 main_alias=self.main_table.table_alias,
+                                                                                 main_key=main_key)
+                                                                                 for key, main_key in zip(tb.table_key,
+                                                                                                          self.main_table.table_key)])
+        else:
+            return "{main_alias}.{main_key}={alias}.{key}".format(alias=tb.table_alias,
+                                                                  key=tb.table_key[0],
+                                                                  main_alias=self.main_table.table_alias,
+                                                                  main_key=self.main_table.table_key[0])
+
+
     def _get_table_joins(self):
-        return '\n'.join(['''LEFT JOIN\n\t{db}.{tb} {alias}\nON {main_alias}.{main_key}={alias}.{key}'''.format(db=tb.database,
-                                                                                  tb=tb.table_name,
-                                                                                  alias=tb.table_alias,
-                                                                                  key=tb.table_key,
-                                                                                  main_alias=self.main_table.table_alias,
-                                                                                  main_key=self.main_table.table_key)
+        return '\n'.join(['''LEFT JOIN\n\t{db}.{tb} {alias}\nON {condition}'''.format(db=tb.database,
+                                                                                      tb=tb.table_name,
+                                                                                      alias=tb.table_alias,
+                                                                                      condition=self._gen_join_condition(tb))
                                                                                   if tb.database != ''
                                                                                   else
-                          '''LEFT JOIN\n\t{tb} {alias}\nON {main_alias}.{main_key}={alias}.{key}'''.format(tb=tb.table_name,
-                                                                                                      alias=tb.table_alias,
-                                                                                                      key=tb.table_key,
-                                                                                                      main_alias=self.main_table.table_alias,
-                                                                                                      main_key=self.main_table.table_key)
+                          '''LEFT JOIN\n\t{tb} {alias}\nON {condition}'''.format(tb=tb.table_name,
+                                                                                 alias=tb.table_alias,
+                                                                                 condition=self._gen_join_condition(tb))
                                                                                   for tb in self._join_list])
 
     def _get_main_table(self):
@@ -306,6 +317,22 @@ class BaseReaderStrategy:
                                  var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
                                  )
 
+    def _add_filter_to_query(self, query, tb_name, var, var_name, safra, mX):
+        if "FILTER" in var.keys():
+            query.variable.add(tb_name.format(m_add(safra, -mX)),
+                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
+                                 )
+        elif str(mX+var["DEFASAGEM"]) in var["TRANSFORMATIONS"].keys():
+            query.case_when.add(tb_name.format(m_add(safra, -mX)),
+                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"]))),
+                                 var["ALIAS"],
+                                 var["TRANSFORMATIONS"][str(mX+var["DEFASAGEM"])]
+                                 )
+        else:
+            query.variable.add(tb_name.format(m_add(safra, -mX)),
+                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
+                                 )
+
 
     def get_main_table(self, safra):
 
@@ -366,7 +393,8 @@ class StackedTableQueryStrategy(BaseReaderStrategy):
                                                Query.create().main_table.add(tb["DATABASE"],
                                                tb_name.format(m_add(safra,tb['MAIN'])),
                                                tb["ALIAS"].format(m_add(safra,tb['MAIN'])),
-                                               m_add(safra,tb['MAIN'])).where.add(
+                                               m_add(safra,tb['MAIN']),
+                                               tb["TABLE_KEY"]).where.add(
                                                tb["ALIAS"].format(m_add(safra,tb['MAIN']))+'.data_ref',
                                                '=',
                                                m_add(safra,tb['MAIN'])
@@ -429,7 +457,8 @@ class SimpleQueryStrategy(BaseReaderStrategy):
         query = Query.create().main_table.add(db_name,
                                               new_tb_name,
                                               tb["ALIAS"].format(m_add(safra,tb['MAIN'])),
-                                              m_add(safra,tb['MAIN']))
+                                              m_add(safra,tb['MAIN']),
+                                              table_key=tb["TABLE_KEY"])
 
         for tb_name, tb in self.query_dict.items():
             for var_name, var in tb["VARS"].items():
@@ -440,7 +469,8 @@ class SimpleQueryStrategy(BaseReaderStrategy):
                         query.left_join.add('',
                                             new_tb_name,
                                             tb["ALIAS"].format(m_add(safra, -mX)),
-                                            m_add(safra,-mX))
+                                            m_add(safra,-mX),
+                                            table_key=tb["TABLE_KEY"])
 
                         query.variable.add(new_tb_name,
                                            self._get_var_name(var, var_name, safra, mX)
@@ -449,7 +479,8 @@ class SimpleQueryStrategy(BaseReaderStrategy):
                         query.left_join.add(tb["DATABASE"],
                                             tb_name.format(m_add(safra, -mX)),
                                             tb["ALIAS"].format(m_add(safra, -mX)),
-                                            m_add(safra,-mX))
+                                            m_add(safra,-mX),
+                                            table_key=tb["TABLE_KEY"])
 
                         self._add_var_to_query(query, tb_name, var, var_name, safra, mX)
 
@@ -470,15 +501,18 @@ class SingleTableQueryStrategy(BaseReaderStrategy):
         query = Query.create().main_table.add(tb["DATABASE"],
                                                  tb_name.format(m_add(safra,-mX)),
                                                  tb["ALIAS"].format(m_add(safra,-mX)),
-                                                 m_add(safra,-mX))
+                                                 m_add(safra,-mX),
+                                                 table_key=tb["TABLE_KEY"])
 
         if "SAFRADA" in tb.keys():
             query.where.add('{}.{}'.format(tb["ALIAS"].format(m_add(safra, -mX)),tb["SAFRADA"]),
                                                    '=',
                                                    m_add(safra, -mX))
 
-        query.variable.add(tb_name.format(m_add(safra, -mX)),
-                           "NR_CPF_CNPJ")
+        for key in tb['TABLE_KEY']:
+            query.variable.add(tb_name.format(m_add(safra, -mX)),
+                               key)
+
 
         for var_name, var in tb["VARS"].items():
             if mX in var["SAFRAS"]:

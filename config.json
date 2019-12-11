@@ -1,13 +1,18 @@
 {
     "123456": {
         "tabela1_{}": {
-            "SAFRADA":"DATA_REF_CARGA",
-            "TABLE_KEY":"NR_CPF_CNPJ",
+            "TABLE_KEY":["AGENCIA","CONTA"],
             "MAIN": 0,
             "ALIAS": "tb1_{}",
             "DATABASE": "db",
             "VARS": {
                 "var1_{}": {
+                    "FILTER":{
+                    "0":[
+                      "=",
+                      1
+                    ]
+                    },
                     "SAFRAS": [
                         0,
                         1
@@ -58,9 +63,9 @@
                 }
             }
         },
-        "tabela2_{}": {
+        "tabela2": {
             "SAFRADA":"DATA_REF_CARGA",
-            "TABLE_KEY":"NR_CPF_CNPJ",
+            "TABLE_KEY":["AGENCIA","CONTA"],
             "ALIAS": "tb2_{}",
             "DATABASE": "db",
             "VARS": {
