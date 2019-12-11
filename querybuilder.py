@@ -318,20 +318,16 @@ class BaseReaderStrategy:
                                  )
 
     def _add_filter_to_query(self, query, tb_name, var, var_name, safra, mX):
-        if "FILTER" in var.keys():
-            query.variable.add(tb_name.format(m_add(safra, -mX)),
-                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
-                                 )
-        elif str(mX+var["DEFASAGEM"]) in var["TRANSFORMATIONS"].keys():
-            query.case_when.add(tb_name.format(m_add(safra, -mX)),
+        if "FILTER" not in var.keys():
+            pass
+        elif str(mX) in var["FILTER"].keys():
+            query.where.add(tb_name.format(m_add(safra, -mX)),
                                  var_name.format(m_add(safra,-(mX+var["DEFASAGEM"]))),
                                  var["ALIAS"],
                                  var["TRANSFORMATIONS"][str(mX+var["DEFASAGEM"])]
                                  )
         else:
-            query.variable.add(tb_name.format(m_add(safra, -mX)),
-                                 var_name.format(m_add(safra,-(mX+var["DEFASAGEM"])))
-                                 )
+            pass
 
 
     def get_main_table(self, safra):
