@@ -24,8 +24,14 @@ class MulticlassLogisticRegression:
         self.print_epoch = print_epoch
         self.eps = eps
 
-    def _feedforward(self, X):
-        Y_proba = np.exp(X.dot(self.W) + self.b)/np.exp(X.dot(self.W) + self.b).sum(axis=1,keepdims=True)
+    def _feedforward(self, X, best=False):
+        Y_proba = None
+        if best:
+            Y_proba = (np.exp(X.dot(self.best_W) + self.best_b)/
+                       np.exp(X.dot(self.best_W) + self.best_b).sum(axis=1,keepdims=True))
+        else:
+            Y_proba = (np.exp(X.dot(self.W) + self.b)/
+                       np.exp(X.dot(self.W) + self.b).sum(axis=1,keepdims=True))
         return Y_proba
     
     def _gradient_weights(self, X, Y_proba, T):
@@ -58,16 +64,23 @@ class MulticlassLogisticRegression:
 
         self.costs = []
         self.clf_rates = []
+        self.best_W = self.W
+        self.best_b = self.b
 
         for epoch in range(self.num_epochs):
             
             Y_proba = self._feedforward(X)
+
+            self.costs.append(self._logloss(T, Y_proba))
+            self.clf_rates.append(self.score(y, Y_proba))
             
             if epoch % self.print_epoch == 0:
-                self.costs.append(self._logloss(T, Y_proba))
-                self.clf_rates.append(self.score(y, Y_proba))
                 if self.verbose:
                     print("cost: ", self.costs[-1], "accuracy: ", self.clf_rates[-1])
+
+            if self._logloss(T, Y_proba) <= np.min(self.costs):
+                self.best_W = self.W
+                self.best_b = self.b
 
             self.W += self.learning_rate * self._gradient_weights(X, Y_proba, T)
             self.b += self.learning_rate * self._gradient_biases(Y_proba, T)
