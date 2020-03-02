@@ -65,8 +65,9 @@ class MulticlassLogisticRegression:
             if epoch % self.print_epoch == 0:
                 self.costs.append(self._logloss(T, Y_proba))
                 self.clf_rates.append(self.score(y, Y_proba))
-                print("cost: ", cost[-1], "accuracy: ", self.clf_rates[-1]) if self.verbose
-            
+                if self.verbose:
+                    print("cost: ", cost[-1], "accuracy: ", self.clf_rates[-1])
+                                
             self.W += self.learning_rate * self._gradient_weights(X, Y_proba, T)
             self.b += self.learning_rate * self._gradient_biases(Y_proba, T)
 
