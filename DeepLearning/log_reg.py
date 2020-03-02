@@ -17,11 +17,12 @@ class MulticlassLogisticRegression:
         Caio Martins
     """
 
-    def __init__(self, learning_rate=1e-3, num_epochs=10000, verbose=True, print_epoch=1000):
+    def __init__(self, learning_rate=1e-3, num_epochs=10000, verbose=True, print_epoch=1000, eps=1e-5):
         self.learning_rate = learning_rate
         self.num_epochs = num_epochs
         self.verbose = verbose
         self.print_epoch = print_epoch
+        self.eps = eps
 
     def _feedforward(self, X):
         Y_proba = np.exp(X.dot(self.W) + self.b)/np.exp(X.dot(self.W) + self.b).sum(axis=1,keepdims=True)
@@ -39,7 +40,7 @@ class MulticlassLogisticRegression:
         return accuracy
 
     def _logloss(self, T, Y_proba):
-        return - (T * np.log(Y_proba)).sum()
+        return - (T * np.log(np.clip(Y_proba,self.eps,1-self.eps))).sum()
 
     def _get_dims(self, X, y):
         self.K = np.unique(y).size
@@ -76,7 +77,6 @@ class MulticlassLogisticRegression:
         return self._feedforward(X)
 
     def predict(self, X):
-        Y_proba = self._predict_proba(X)
-        return np.argmax(Y_proba, axis=1)
+        return np.argmax(self.predict_proba(X), axis=1)
 
         
