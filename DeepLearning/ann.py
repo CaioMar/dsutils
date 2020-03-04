@@ -58,7 +58,7 @@ class ANNClassifier:
         else:
             activation = np.exp(self.Zs[-1].dot(self.Ws[-1]) + self.bs[-1])
         Y_proba = (activation/activation.sum(axis=1,keepdims=True))
-        return Y_proba
+        return np.clip(Y_proba,self.eps,1-self.eps)
     
     def _gradient_weights(self, X, Y_proba, T, layer):
         derror = T - Y_proba
