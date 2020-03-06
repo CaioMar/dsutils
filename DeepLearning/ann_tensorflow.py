@@ -16,34 +16,76 @@ class HiddenLayer:
     """
     Representation of regular hidden layer.
     """
-    def __init__(self, M1, M2, layernum, activation='relu', dropout_rate=1):
+    def __init__(self, M1, M2, layernum,
+                 activation='relu', dropout_rate=1,
+                 batch_normalization=False, alpha=0.9):
         self.M1 = M1
         self.M2 = M2
         self.activation = activation
         self.dropout_rate = dropout_rate
         W = np.random.randn(self.M1,self.M2) / np.sqrt(self.M1)
         b = np.zeros(self.M2)
+
         self.W = tf.Variable(W.astype(np.float32), name='W%d' %layernum)
-        self.b = tf.Variable(b.astype(np.float32), name='b%d' %layernum)
+
+        self.batch_normalization = batch_normalization
+
+        if not batch_normalization:
+            self.b = tf.Variable(b.astype(np.float32), name='b%d' %layernum)
+        else:
+            self.alpha = alpha
+
+            self.gamma = tf.Variable(np.ones(self.M2).astype(np.float32))
+            self.beta = tf.Variable(np.ones(self.M2).astype(np.float32))
+
+            self.running_mean = tf.Variable(np.zeros(self.M2).astype(np.float32), trainable=False)
+            self.running_var = tf.Variable(np.zeros(self.M2).astype(np.float32), trainable=False)
+
+        self.logit = None
+
 
     def get_logit(self, Z):
-        return tf.matmul(Z,self.W) + self.b
+        if not self.batch_normalization:
+            return tf.matmul(Z,self.W) + self.b
+        else:
+            return tf.matmul(Z,self.W)
 
     def forward(self, Z, test=False):
+        
         self.logit = self.get_logit(Z)
 
-        if test:
-            logit = self.logit
-        else:
-            logit = tf.nn.dropout(self.logit,
-                                  keep_prob=self.dropout_rate)
-        
+        if self.batch_normalization:
+            if not test:
+                batch_mean, batch_var = tf.nn.moments(self.logit, [0])
+                update_mean = tf.assign(self.running_mean,
+                                        self.alpha*self.running_mean + (1-self.alpha)*batch_mean)
+                update_var = tf.assign(self.running_var,
+                                    self.alpha*self.running_var + (1-self.alpha)*batch_var)
+                with tf.control_dependencies([update_mean, update_var]):
+                    self.logit = tf.nn.batch_normalization(self.logit,
+                                                           batch_mean,
+                                                           batch_var,
+                                                           self.beta,
+                                                           self.gamma,
+                                                           1e-4)
+            else:
+                self.logit = tf.nn.batch_normalization(self.logit,
+                                                       self.running_mean,
+                                                       self.running_var,
+                                                       self.beta,
+                                                       self.gamma,
+                                                       1e-4)
+
+        if not test:
+            self.logit = tf.nn.dropout(self.logit,
+                                       keep_prob=self.dropout_rate)
+
         if self.activation == 'relu':
-            return tf.nn.relu(logit)
+            return tf.nn.relu(self.logit)
         elif self.activation == 'tanh':
-            return tf.nn.tanh(logit)
+            return tf.nn.tanh(self.logit)
         elif self.activation == 'sigmoid':
-            return tf.nn.sigmoid(logit)
+            return tf.nn.sigmoid(self.logit)
 
 
 class ANNClassifier:
@@ -58,7 +100,8 @@ class ANNClassifier:
                  learning_rate=1e-3, num_epochs=10000, 
                  verbose=True, print_epoch=1000, eps=1e-5,
                  gd_type='full', batch_number = 10, mu = 0.9,
-                 decay=0.99, dropout_rates = None):
+                 decay=0.99, dropout_rates = None, batch_normalization=False,
+                 alpha = 0.9):
         self.learning_rate = learning_rate
         self.num_epochs = num_epochs
         self.verbose = verbose
@@ -70,6 +113,8 @@ class ANNClassifier:
         self.decay = decay
         self.activation = activation
         self.hidden_layers_sizes = []
+        self.alpha = alpha
+        self.batch_normalization = batch_normalization
         if hidden_layers_sizes != None:
             self.hidden_layers_sizes = hidden_layers_sizes
         self.dropout_rates = [1 for i in range(len(self.hidden_layers_sizes)+1)]
@@ -100,17 +145,22 @@ class ANNClassifier:
         self.Zs_test = [inputs]
         self.hidden_layers = []
         for ind, _ in enumerate(self.hidden_layers_sizes[:-1]):
+            batch_norm = (self.batch_normalization if ind != len(self.hidden_layers_sizes[:-1])-1 
+                                                   else False)
             hl = HiddenLayer(self.hidden_layers_sizes[ind],
                              self.hidden_layers_sizes[ind+1],
                              ind,
                              activation=self.activation,
-                             dropout_rate=self.dropout_rates[ind])
+                             dropout_rate=self.dropout_rates[ind],
+                             batch_normalization=batch_norm,
+                             alpha=self.alpha)
             self.hidden_layers.append(hl)
             self.Zs.append(hl.forward(self.Zs[ind]))
+            last_logit = hl.logit
             self.Zs_test.append(hl.forward(self.Zs_test[ind],test=True))
         
         cost = tf.reduce_sum(tf.nn.\
-                  softmax_cross_entropy_with_logits_v2(logits=self.Zs[-1],
+                  softmax_cross_entropy_with_logits_v2(logits=last_logit,
                                                        labels=labels))
         
         train_op = tf.train.RMSPropOptimizer(self.learning_rate,
