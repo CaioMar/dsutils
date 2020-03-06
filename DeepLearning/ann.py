@@ -81,9 +81,9 @@ class ANNClassifier:
         else:
             for l in range(final_layer,layer,-1):
                 if self.activation == 'sigmoid':
-                    derror = derror.dot(self.Ws[l].T)*self.Zs[l]*(1-self.Zs[l])
+                    derror = derror.dot(self.Ws_old[l].T)*self.Zs[l]*(1-self.Zs[l])
                 elif self.activation == 'relu':
-                    derror = derror.dot(self.Ws[l].T)*np.sign(self.Zs[l])
+                    derror = derror.dot(self.Ws_old[l].T)*np.sign(self.Zs[l])
             return derror.sum(axis=0)
 
     def score(self, y, Y_proba):
@@ -92,8 +92,10 @@ class ANNClassifier:
         return accuracy
 
     def _logloss(self, T, Y_proba):
-        return - (T * np.log(np.clip(Y_proba,self.eps,1-self.eps))).sum()
-
+        return (- (T * np.log(np.clip(Y_proba,self.eps,1-self.eps))).sum() +
+                   sum([(self.regularization*np.square(w)).sum() for w in self.Ws]) +
+                   sum([(self.regularization*np.square(b)).sum() for b in self.bs]))
+                   
     def _get_dims(self, X, y):
         self.K = np.unique(y).size
         self.N, self.D = X.shape
@@ -159,11 +161,13 @@ class ANNClassifier:
                     y_proba = self._feedforward(x)
                     t = T[batch_size*l:(batch_size)*(l+1)]
                   
+                    self.Ws_old = self.Ws.copy()
+
                     for ll in range(len(self.Ws)-1,-1,-1):
 
                         vW[ll] += self.mu*vW[ll] + self.learning_rate * \
                                                 (self._gradient_weights(x, y_proba, t, ll) -
-                                                 self.regularization * self.Ws[ll])
+                                                 self.regularization * self.Ws_old[ll])
                         vb[ll] += self.mu*vb[ll] + self.learning_rate * \
                                                 (self._gradient_biases(y_proba, t, ll) -
                                                  self.regularization * self.bs[ll])

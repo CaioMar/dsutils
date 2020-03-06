@@ -74,13 +74,13 @@ class MulticlassLogisticRegression:
 
         self.costs = []
         self.clf_rates = []
+        
+        init = tf.global_variables_initializer()    
+        with tf.Session() as session:
 
-        if self.gd_type == 'full':
-    
-            init = tf.global_variables_initializer()    
-            with tf.Session() as session:
+            session.run(init)
 
-                session.run(init)
+            if self.gd_type == 'full':
 
                 for epoch in range(self.num_epochs):
 
@@ -97,50 +97,44 @@ class MulticlassLogisticRegression:
                                   "cost: ", self.costs[-1],
                                   "accuracy: ", self.clf_rates[-1])
                 
-                saver.save(session, 'logreg_model',global_step=self.num_epochs)
+                saver.save(session, './model/logreg_model',global_step=self.num_epochs)
 
-        # elif self.gd_type == 'batch':
+            elif self.gd_type == 'batch':
             
-        #     batch_size = int(self.N/self.batch_number*1.0)
+                batch_size = int(self.N/self.batch_number*1.0)
 
-        #     vW = 0
-        #     vb = 0
+                for epoch in range(self.num_epochs):
+                    
+                    X, y = shuffle(X,y)
+                    T = np.array([[0 if y[j] != i else 1 for i in range(self.K)] for j in range(self.N)])
 
-        #     for epoch in range(self.num_epochs):
-                
-        #         X, y = shuffle(X,y)
-        #         T = np.array([[0 if y[j] != i else 1 for i in range(self.K)] for j in range(self.N)])
+                    for l in range(self.batch_number):
 
-        #         for l in range(self.batch_number):
+                        x = X[batch_size*l:(batch_size)*(l+1)]
+                        t = T[batch_size*l:(batch_size)*(l+1)]
 
-        #             x = X[batch_size*l:(batch_size)*(l+1)]
-        #             y_proba = self._feedforward(x)
-        #             t = T[batch_size*l:(batch_size)*(l+1)]
-                  
-        #             vW += self.mu*vW + self.learning_rate * self._gradient_weights(x, y_proba, t)
-        #             vb += self.mu*vb + self.learning_rate * self._gradient_biases(y_proba, t)
-
-        #             self.W += vW
-        #             self.b += vb
-
-        #             Y_proba = self._feedforward(X)
-
-        #             self.costs.append(self._logloss(T, Y_proba))
-        #             self.clf_rates.append(self.score(y, Y_proba))
-
-        #             if (epoch*self.batch_number+l) % self.print_epoch == 0:
-        #                 if self.verbose:
-        #                     print("cost: ", self.costs[-1], "accuracy: ", self.clf_rates[-1])
-
-        #             if self._logloss(T, Y_proba) <= np.min(self.costs):
-        #                 self.best_W = self.W
-        #                 self.best_b = self.b            
-
+                        session.run(train_op, feed_dict={'inputs:0':x, 'labels:0':t})  
+                        y_pred = session.run(self.pred_op, feed_dict = {"inputs:0": X})
+                        cost_val = session.run(cost, feed_dict = {"inputs:0": X, 'labels:0': T})    
+                    
+                        self.costs.append(cost_val)
+                        self.clf_rates.append(self.score(y, y_pred))
+                        
+                        if (epoch*self.batch_number+l) % self.print_epoch == 0:
+                            if self.verbose:
+                                print("epoch: ", epoch,
+                                    "cost: ", self.costs[-1],
+                                    "accuracy: ", self.clf_rates[-1])
+                    
+                saver.save(session, './model/logreg_model',global_step=self.num_epochs*self.batch_number)
 
     def predict(self, X):
         with tf.Session() as session:
-            new_saver = tf.train.import_meta_graph('logreg_model-{}.meta'.format(self.num_epochs))
-            new_saver.restore(session, tf.train.latest_checkpoint('./'))
+            if self.gd_type == 'full':
+                new_saver = tf.train.import_meta_graph('./model/logreg_model-{}.meta'.format(self.num_epochs))
+            else:
+                new_saver = tf.train.import_meta_graph('./model/logreg_model-{}.meta'.format(self.num_epochs*self.batch_number))
+            new_saver.restore(session, tf.train.latest_checkpoint('./model'))
             y_pred = session.run(self.pred_op, feed_dict={'inputs:0':X})
         return y_pred
 
