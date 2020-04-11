@@ -7,6 +7,12 @@
             "DATABASE": "db",
             "VARS": {
                 "var1_{}": {
+                    "AGG_PRIMITIVES":["MEAN_0_6_1_M",
+                        "SUM_1_7_2_M",
+                        "MEAN_6_12_1_M",
+                        "MIN_0_7_1_M",
+                        "MAX_0_7_1_M",
+                        "RANGE_0_10_1_M"],
                   "FILTER":{
                   "0":[
                     "=",
@@ -18,30 +24,14 @@
                         1
                     ],
                     "DEFASAGEM": 0,
-                    "ALIAS": "var1_",
-                    "TRANSFORMATIONS": {
-                        "1": [
-                            [
-                                "=0",
-                                11
-                            ],
-                            [
-                                "=1",
-                                12
-                            ],
-                            [
-                                "else",
-                                15
-                            ]
-                        ]
-                    }
+                    "ALIAS": "var1_{}"
                 },
                 "var2_{}": {
                     "SAFRAS": [
                         0
                     ],
                     "DEFASAGEM": 0,
-                    "ALIAS": "var2_",
+                    "ALIAS": "var2_{}",
                     "TRANSFORMATIONS": {
                         "0": [
                             [
@@ -64,19 +54,27 @@
             }
         },
         "tabela2": {
-            "SAFRADA":"DATA_REF_CARGA",
+            "SAFRADA": "DAT_REF_CARGA",
             "TABLE_KEY":["AGENCIA","CONTA"],
             "ALIAS": "tb2_{}",
             "DATABASE": "db",
             "VARS": {
                 "var3_{}": {
-
+                    "ALIAS":"var3_{}",
                     "SAFRAS": [
                         0
                     ],
                     "DEFASAGEM": 1
                 },
                 "var4_{}": {
+                  "AGG_PRIMITIVES":["MEAN_0_6_1_M",
+                                    "SUM_1_7_2_M",
+                                    "MEAN_6_12_1_M",
+                                    "MIN_0_7_1_M",
+                                    "MAX_0_7_1_M",
+                                    "RANGE_0_10_1_M",
+                                    "MEANDIFF_0_6_1_M"],
+                  "ALIAS":"var4_{}",
                   "FILTER":{
                   "0":[
                     "=",
@@ -85,7 +83,7 @@
                   },
                     "SAFRAS": [
                         0,
-                        3
+                        1
                     ],
                     "DEFASAGEM": 0
                 }
