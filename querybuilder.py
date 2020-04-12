@@ -194,24 +194,28 @@ class QueryAggPrimitiveBuilder(QueryBuilder):
     def __init__(self, query):
         super().__init__(query)
 
-    def add(self, table_name_list, var_name_list, var_alias, primitive):
+    def add(self, table_name_list, var_name_list, var_alias, primitive, x_range=None):
         tb_list = [self.query._get_table_ref(table_name=table_name)
                    for table_name in table_name_list]
         var_name = ""
-        if primitive == "MEAN":
+        if primitive == "mean":
             var_name = self._mean(tb_list, var_name_list)
-        elif primitive == "SUM":
+        elif primitive == "sum":
             var_name = self._sum(tb_list, var_name_list)
-        elif primitive == "MAX":
+        elif primitive == "max":
             var_name = self._max(tb_list, var_name_list)
-        elif primitive == "MIN":
+        elif primitive == "min":
             var_name = self._min(tb_list, var_name_list)
-        elif primitive == "RANGE":
+        elif primitive == "range":
             var_name = self._range(tb_list, var_name_list)
-        elif primitive == "MEANDIFF":
-            var_name = self._meandiff(tb_list, var_name_list)
-        elif primitive == "TREND":
-            var_name = self._range(tb_list, var_name_list)
+        # elif primitive == "meandiff":
+        #     var_name = self._meandiff(tb_list, var_name_list)
+        elif primitive == "slope":
+            var_name = self._slope(tb_list, var_name_list, x_range)
+        elif primitive == "intercept":
+            var_name = self._intercept(tb_list, var_name_list, x_range)
+        elif primitive == "variance":
+            var_name = self._variance(tb_list, var_name_list)
         else:
             raise RuntimeError("Primitive %s not defined." %primitive)
         if not self.query._in_var_list(var_name):
@@ -250,9 +254,49 @@ class QueryAggPrimitiveBuilder(QueryBuilder):
         return "({})/{}".format(self._diff(tb_list, var_name_list),
                                 len(var_name_list)-1)
 
-    def _trend(self, tb_list, var_name_list):
-        return "({})/{}".format(self._diff(tb_list, var_name_list),
-                                len(var_name_list)-1)
+    def _variance(self, tb_list, var_name_list):
+        return ("(({})/{}".format(" + ".join(["{a}.{v}*{a}.{v}".format(a=tb.table_alias,v=var_name) 
+                                              for tb, var_name in zip(tb_list,var_name_list)]),
+                                  len(var_name_list)) + 
+                " - ({m})*({m}))".format(m=self._mean(tb_list, var_name_list)))
+
+    def _x_sum_of_squares(self, x_range):
+        m = sum(x_range)/len(x_range)
+        return str(sum([x*x for x in x_range]) - len(x_range)*m*m)
+
+    def _x_y_multiply(self, tb_list, var_name_list, x_range):
+        multiply = " + ".join(["{}*{}.{}".format(x,tb.table_alias, var_name) 
+                            for x, tb, var_name in zip(x_range,tb_list,var_name_list)])
+        return "({})".format(multiply)
+
+    def _slope(self, tb_list, var_name_list, x_range):
+        x_range_rev = x_range.copy()
+        x_range_rev.reverse()
+        y_mean = self._mean(tb_list, var_name_list)
+        x_mean = str(sum(x_range_rev)/len(x_range_rev))
+        x_square_mean = str(sum([x*x for x in x_range_rev]))
+        x_y_multiply = self._x_y_multiply(tb_list, var_name_list, x_range_rev)
+        denominator = self._x_sum_of_squares(x_range_rev)
+        return "(({y_m})*{x_square_m}-{x_m}*({x_y}))/{den}"\
+                .format(y_m=y_mean,
+                        x_square_m=x_square_mean,
+                        x_m=x_mean,
+                        x_y=x_y_multiply,
+                        den=denominator)
+
+    def _intercept(self, tb_list, var_name_list, x_range):
+        x_range_rev = x_range.copy()
+        x_range_rev.reverse()
+        y_mean = self._mean(tb_list, var_name_list)
+        x_mean = str(sum(x_range_rev)/len(x_range_rev))
+        x_y_multiply = self._x_y_multiply(tb_list, var_name_list, x_range_rev)
+        denominator = self._x_sum_of_squares(x_range_rev)
+        return "({x_y}-{x_m}*{x_m})/{den}"\
+                .format(y_m=y_mean,
+                        x_m=x_mean,
+                        x_y=x_y_multiply,
+                        den=denominator)
+
 
 
 class QueryVariableBuilder(QueryBuilder):
@@ -567,7 +611,8 @@ class SimpleQueryStrategy(BaseReaderStrategy):
                         primitive, start, stop, step, length = agg_var.split('_')
                         table_name_list = []
                         var_name_list = []
-                        for mX in range(int(start), int(stop), int(step)):
+                        x_range = list(range(int(start), int(stop), int(step)))
+                        for mX in x_range:
                             if "SAFRADA" in tb.keys():
                                 query.left_join.add("",
                                                     self._subquery(safra, tb_name, tb, mX),
@@ -593,7 +638,8 @@ class SimpleQueryStrategy(BaseReaderStrategy):
                         query.agg_primitive.add(table_name_list,
                                                 var_name_list,
                                                 var["ALIAS"].format(agg_var),
-                                                primitive)
+                                                primitive,
+                                                x_range=x_range)
 
 
         self.query = str(query.build())

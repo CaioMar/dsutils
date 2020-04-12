@@ -7,12 +7,12 @@
             "DATABASE": "db",
             "VARS": {
                 "var1_{}": {
-                    "AGG_PRIMITIVES":["MEAN_0_6_1_M",
-                        "SUM_1_7_2_M",
-                        "MEAN_6_12_1_M",
-                        "MIN_0_7_1_M",
-                        "MAX_0_7_1_M",
-                        "RANGE_0_10_1_M"],
+                    "AGG_PRIMITIVES":["mean_0_6_1_m",
+                        "sum_1_7_2_m",
+                        "mean_6_12_1_m",
+                        "min_0_7_1_m",
+                        "max_0_7_1_m",
+                        "range_0_10_1_m"],
                   "FILTER":{
                   "0":[
                     "=",
@@ -67,13 +67,15 @@
                     "DEFASAGEM": 1
                 },
                 "var4_{}": {
-                  "AGG_PRIMITIVES":["MEAN_0_6_1_M",
-                                    "SUM_1_7_2_M",
-                                    "MEAN_6_12_1_M",
-                                    "MIN_0_7_1_M",
-                                    "MAX_0_7_1_M",
-                                    "RANGE_0_10_1_M",
-                                    "MEANDIFF_0_6_1_M"],
+                  "AGG_PRIMITIVES":["mean_0_6_1_m",
+                                    "sum_1_7_2_m",
+                                    "mean_6_12_1_m",
+                                    "min_0_7_1_m",
+                                    "max_0_7_1_m",
+                                    "range_0_10_1_m",
+                                    "slope_0_8_1_m",
+                                    "intercept_0_6_1_m",
+                                    "variance_0_5_1_m"],
                   "ALIAS":"var4_{}",
                   "FILTER":{
                   "0":[
