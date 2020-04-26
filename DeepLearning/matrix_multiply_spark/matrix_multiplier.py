@@ -62,19 +62,19 @@ class MatrixMultiplier:
             if self.activation == None:
                 new_cols.append('({} + {})'\
                                 .format(' + '.join(new_col),self.bias[i]) + ' as %s_%s' %(self.prefix,
-                                                                                           i) )
+                                                                                           i + 1) )
             elif self.activation == 'sigmoid':
                 new_cols.append('1/(1 + exp(-({} + {})))'\
                                 .format(' + '.join(new_col),self.bias[i]) + ' as %s_%s' %(self.prefix,
-                                                                                           i) )
+                                                                                           i + 1) )
             elif self.activation == 'tanh':
                 new_cols.append('tanh({} + {})'\
                                 .format(' + '.join(new_col),self.bias[i]) + ' as %s_%s' %(self.prefix,
-                                                                                           i) )
+                                                                                           i + 1) )
             elif self.activation == 'relu':
                 new_cols.append('case when {cols} + {bias} > 0 then {cols} + {bias} else 0 end'\
                                 .format(cols=' + '.join(new_col),bias=self.bias[i]) + 
-                                ' as %s_%s' %(self.prefix, i) )
+                                ' as %s_%s' %(self.prefix, i + 1) )
                 
         columns = ',\n\t'.join(new_cols)
         self.df.registerTempTable(self.table_name)
