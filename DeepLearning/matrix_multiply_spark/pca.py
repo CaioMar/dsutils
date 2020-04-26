@@ -64,4 +64,5 @@ class PCA_enhanced(BasePreprocessor, PCA):
         return spark.sql(str(mp.MatrixMultiplier(X,
                                                  self.components_.T,
                                                  df_cols=self.df_cols,
-                                                 prefix='principal_component')))
+                                                 prefix='principal_component',
+                                                 table_name='pca_table')))
